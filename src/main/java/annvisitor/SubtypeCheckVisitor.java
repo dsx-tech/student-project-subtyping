@@ -27,6 +27,37 @@ public class SubtypeCheckVisitor extends ElementScanner7<Void, Void> {
         CompilationUnitTree cut = mTrees.getPath(e).getCompilationUnit();
 
         new TreeScanner<Void, Void>() {
+            private void checkExecutable(ExpressionTree node,
+                                         List<? extends ExpressionTree> acParams,
+                                         List<? extends VariableElement> fParams) {
+
+                if (!acParams.isEmpty()) {
+                    ListIterator<? extends VariableElement> iterator1 = fParams.listIterator();
+                    ListIterator<? extends ExpressionTree> iterator2 = acParams.listIterator();
+
+                    while (iterator1.hasNext() && iterator2.hasNext()) {
+                        VariableElement var1 = iterator1.next();
+                        Element var2 = mTrees.getElement(mTrees.getPath(cut, iterator2.next()));
+                        Subtype ann1 = var1.getAnnotation(Subtype.class);
+                        Subtype ann2 = var2.getAnnotation(Subtype.class);
+
+                        //
+                        if (ann1 == null ^ ann2 == null) {
+                            mTrees.printMessage(Diagnostic.Kind.ERROR,
+                                    "No necessary annotation on formal or actual parameter",
+                                    node,
+                                    cut);
+                        } else if (ann1 != null) {
+                            if (!ann1.value().equalsIgnoreCase(ann2.value())) {
+                                mTrees.printMessage(Diagnostic.Kind.ERROR,
+                                        "Annotation on actual parameter doesn't corresponds to formal's",
+                                        node,
+                                        cut);
+                            }
+                        }
+                    }
+                }
+            }
 
             @Override
             public Void visitReturn(ReturnTree node, Void aVoid) {
@@ -44,37 +75,7 @@ public class SubtypeCheckVisitor extends ElementScanner7<Void, Void> {
                 ExecutableElement invokedMethod = (ExecutableElement) mTrees.getElement(mTrees.getPath(cut, node));
                 // list of elements for args
                 List<? extends VariableElement> formalParams = invokedMethod.getParameters();
-
-                if (!actualParams.isEmpty()) {
-                    ListIterator<? extends VariableElement> iterator1 = formalParams.listIterator();
-                    ListIterator<? extends ExpressionTree> iterator2 = actualParams.listIterator();
-
-                    while (iterator1.hasNext() && iterator2.hasNext()) {
-                        VariableElement var1 = iterator1.next();
-                        Element var2 = mTrees.getElement(mTrees.getPath(cut, iterator2.next()));
-                        Subtype ann1 = var1.getAnnotation(Subtype.class);
-                        Subtype ann2 = var2.getAnnotation(Subtype.class);
-
-                        //
-                        if (ann1 == null ^ ann2 == null) {
-                            mTrees.printMessage(Diagnostic.Kind.ERROR,
-                                    "No necessary annotation on formal or actual parameter",
-                                    node,
-                                    cut);
-                        } else if (ann1 != null) {
-                            if (!ann1.value().equalsIgnoreCase(ann2.value())) {
-                                mTrees.printMessage(Diagnostic.Kind.ERROR,
-                                        "Annotation on actual parameter doesn't corresponds to formal's",
-                                        node,
-                                        cut);
-                            }
-
-                        }
-
-                    }
-
-                }
-
+                checkExecutable(node, actualParams, formalParams);
                 return super.visitMethodInvocation(node, aVoid);
             }
 
@@ -86,37 +87,7 @@ public class SubtypeCheckVisitor extends ElementScanner7<Void, Void> {
                 ExecutableElement invokedMethod = (ExecutableElement) mTrees.getElement(mTrees.getPath(cut, node));
                 // list of elements for args
                 List<? extends VariableElement> formalParams = invokedMethod.getParameters();
-
-                if (!actualParams.isEmpty()) {
-                    ListIterator<? extends VariableElement> iterator1 = formalParams.listIterator();
-                    ListIterator<? extends ExpressionTree> iterator2 = actualParams.listIterator();
-
-                    while (iterator1.hasNext() && iterator2.hasNext()) {
-                        VariableElement var1 = iterator1.next();
-                        Element var2 = mTrees.getElement(mTrees.getPath(cut, iterator2.next()));
-                        Subtype ann1 = var1.getAnnotation(Subtype.class);
-                        Subtype ann2 = var2.getAnnotation(Subtype.class);
-
-                        //
-                        if (ann1 == null ^ ann2 == null) {
-                            mTrees.printMessage(Diagnostic.Kind.ERROR,
-                                    "No necessary annotation on formal or actual parameter",
-                                    node,
-                                    cut);
-                        } else if (ann1 != null) {
-                            if (!ann1.value().equalsIgnoreCase(ann2.value())) {
-                                mTrees.printMessage(Diagnostic.Kind.ERROR,
-                                        "Annotation on actual parameter doesn't corresponds to formal's",
-                                        node,
-                                        cut);
-                            }
-
-                        }
-
-                    }
-
-                }
-
+                checkExecutable(node, actualParams, formalParams);
                 return super.visitNewClass(node, aVoid);
             }
 

@@ -16,13 +16,11 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 public class SubtypeProcessor extends AbstractProcessor {
-    private Messager messager;
     private SubtypeCheckVisitor subtypeCheckVisitor;
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
-        messager = processingEnv.getMessager();
     }
 
     @Override
@@ -31,15 +29,7 @@ public class SubtypeProcessor extends AbstractProcessor {
             return false;
         }
 
-        Set<? extends Element> annotatedDeclarations = roundEnvironment.getElementsAnnotatedWith(Subtype.class);
-
-        /*
-        //search for annotated fields and methods
-        for (Element element : annotatedDeclarations) {
-            Element enclosingElement = element.getEnclosingElement();
-        }
-
-         */
+        //Set<? extends Element> annotatedDeclarations = roundEnvironment.getElementsAnnotatedWith(Subtype.class);
 
         subtypeCheckVisitor = new SubtypeCheckVisitor(processingEnv);
         // obtain the root classes of a current round environment
