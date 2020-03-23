@@ -11,8 +11,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.util.ElementScanner7;
 import javax.tools.Diagnostic;
-import java.util.List;
-import java.util.ListIterator;
+import java.util.*;
 
 public class SubtypeCheckVisitor extends ElementScanner7<Void, Void> {
     private final Trees mTrees;
@@ -22,17 +21,20 @@ public class SubtypeCheckVisitor extends ElementScanner7<Void, Void> {
         this.mTrees = Trees.instance(processingEnvironment);
     }
 
+    //using non annotated but subtyped local vars
     @Override
     public Void visitExecutable(ExecutableElement e, Void aVoid) {
         CompilationUnitTree cut = mTrees.getPath(e).getCompilationUnit();
+        Map<Element, String> localVarsTypes = new HashMap<>();
 
-        new TreeScanner<Void, Void>() {
+        new TreeScanner<String, Void>() {
             private void checkExecutable(ExpressionTree node,
                                          List<? extends ExpressionTree> acParams,
                                          List<? extends VariableElement> fParams) {
 
                 if (!acParams.isEmpty()) {
                     ListIterator<? extends VariableElement> iterator1 = fParams.listIterator();
+                    // TODO: handle case when expression tree is a literal or non variable expression
                     ListIterator<? extends ExpressionTree> iterator2 = acParams.listIterator();
 
                     while (iterator1.hasNext() && iterator2.hasNext()) {
@@ -41,7 +43,7 @@ public class SubtypeCheckVisitor extends ElementScanner7<Void, Void> {
                         Subtype ann1 = var1.getAnnotation(Subtype.class);
                         Subtype ann2 = var2.getAnnotation(Subtype.class);
 
-                        //
+                        //TODO: check a subtype
                         if (ann1 == null ^ ann2 == null) {
                             mTrees.printMessage(Diagnostic.Kind.ERROR,
                                     "No necessary annotation on formal or actual parameter",
@@ -59,16 +61,33 @@ public class SubtypeCheckVisitor extends ElementScanner7<Void, Void> {
                 }
             }
 
+            private String reduceTypes(String r, String l) {
+                return r;
+            }
+
+            private boolean checkCompatibility(String r, String l) {
+                return r.equals(l);
+            }
+
             @Override
-            public Void visitReturn(ReturnTree node, Void aVoid) {
-                if (e.getAnnotation(Subtype.class) != null) {
-                    // TODO: implement the case which checks conformity return value with annotation on method
+            public String visitReturn(ReturnTree node, Void aVoid) {
+                String res = super.visitReturn(node, aVoid);
+                Subtype ann = e.getAnnotation(Subtype.class);
+
+                if (ann != null) {
+                    if (res == null || !ann.value().equals(res)) {
+                        mTrees.printMessage(Diagnostic.Kind.ERROR, "Incorrect return type",
+                                node,
+                                cut);
+                    }
+                    res = ann.value();
                 }
-                return super.visitReturn(node, aVoid);
+
+                return res;
             }
 
             @Override
-            public Void visitMethodInvocation(MethodInvocationTree node, Void aVoid) {
+            public String visitMethodInvocation(MethodInvocationTree node, Void aVoid) {
                 // list of expr for args
                 List<? extends ExpressionTree> actualParams = node.getArguments();
                 // element of a current invoked method
@@ -76,11 +95,15 @@ public class SubtypeCheckVisitor extends ElementScanner7<Void, Void> {
                 // list of elements for args
                 List<? extends VariableElement> formalParams = invokedMethod.getParameters();
                 checkExecutable(node, actualParams, formalParams);
-                return super.visitMethodInvocation(node, aVoid);
+
+                String res = super.visitMethodInvocation(node, aVoid);
+                Subtype ann = invokedMethod.getAnnotation(Subtype.class);
+
+                return ann != null ? ann.value() : "unit";
             }
 
             @Override
-            public Void visitNewClass(NewClassTree node, Void aVoid) {
+            public String visitNewClass(NewClassTree node, Void aVoid) {
                 // list of expr for args
                 List<? extends ExpressionTree> actualParams = node.getArguments();
                 // element of a current invoked method
@@ -88,13 +111,61 @@ public class SubtypeCheckVisitor extends ElementScanner7<Void, Void> {
                 // list of elements for args
                 List<? extends VariableElement> formalParams = invokedMethod.getParameters();
                 checkExecutable(node, actualParams, formalParams);
-                return super.visitNewClass(node, aVoid);
+                String res = super.visitNewClass(node, aVoid);
+                return "unit";
             }
 
             @Override
-            public Void visitVariable(VariableTree node, Void aVoid) {
-                // TODO: implement acts which check the initialization expression of corresponding local variable
-                return super.visitVariable(node, aVoid);
+            public String visitVariable(VariableTree node, Void aVoid) {
+                // inferred type
+                String res = super.visitVariable(node, aVoid);
+                // variable declaration
+                Element var = mTrees.getElement(mTrees.getPath(cut, node));
+                Subtype ann = var.getAnnotation(Subtype.class);
+
+                if (ann != null) {
+                    localVarsTypes.put(var, ann.value());
+                    res = ann.value();
+                } else if (res != null) {
+                    localVarsTypes.put(var, res);
+                }
+                mTrees.printMessage(Diagnostic.Kind.NOTE, res != null ? res : "i dont know", node, cut);
+                return res;
+            }
+
+            @Override
+            public String visitLiteral(LiteralTree node, Void aVoid) {
+                return "unit";
+            }
+
+            // TODO: check subtype
+            @Override
+            public String visitBinary(BinaryTree node, Void aVoid) {
+                String l = this.scan((Tree)node.getLeftOperand(), aVoid);
+                String r = this.scan((Tree)node.getRightOperand(), aVoid);
+
+                if (!checkCompatibility(r, l)) {
+                    mTrees.printMessage(Diagnostic.Kind.ERROR, "Incompatible types",
+                            node,
+                            cut);
+                }
+
+                return reduceTypes(l, r);
+            }
+
+            @Override
+            public String visitIdentifier(IdentifierTree node, Void aVoid) {
+                String res = "unit";
+
+                Element var = mTrees.getElement(mTrees.getPath(cut, node));
+                Subtype ann = var.getAnnotation(Subtype.class);
+                if (ann != null) {
+                    res = ann.value();
+                } else if (localVarsTypes.containsKey(var)) {
+                    res = localVarsTypes.get(var);
+                }
+
+                return res;
             }
 
         }.scan(mTrees.getTree(e), null);
