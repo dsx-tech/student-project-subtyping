@@ -160,10 +160,11 @@ public class SubtypeCheckVisitor extends ElementScanner7<Void, Void> {
 
             @Override
             public Class<?> visitMethodInvocation(MethodInvocationTree node, Void aVoid) {
+                mTrees.printMessage(Diagnostic.Kind.NOTE, "enter in new class visitor", node, cut);
                 // element of a current invoked method
                 ExecutableElement invokedMethod = (ExecutableElement) mTrees.getElement(mTrees.getPath(cut, node));
                 List<? extends ExpressionTree> actualParams = node.getArguments();
-
+                mTrees.printMessage(Diagnostic.Kind.NOTE, "find params", node, cut);
                 printResultInfo(node, checkParamsMatching(actualParams, invokedMethod, aVoid));
                 Subtype ann = invokedMethod.getAnnotation(Subtype.class);
                 // TODO:
@@ -257,12 +258,37 @@ public class SubtypeCheckVisitor extends ElementScanner7<Void, Void> {
             public Class<?> visitBinary(BinaryTree node, Void aVoid) {
                 Class<?> l = this.scan(node.getLeftOperand(), aVoid);
                 Class<?> r = this.scan(node.getRightOperand(), aVoid);
+
+                if (node.getKind() == Tree.Kind.PLUS) {
+                    if (isSubtype(l, Str.class) || isSubtype(r, Str.class)) {
+                        Class<?> commonAnc = generalizeTypes(l, r);
+                        if (commonAnc.getName().equals(Top.class.getName())) {
+                            return Str.class;
+                        } else {
+                            return commonAnc;
+                        }
+                    }
+                }
+
                 // TODO: check that l and r are subtype of int/double/...
-                if (!isSubtype(r, l)) {
+                if (!isSubtype(r, l) && !isSubtype(l, r)) {
                     mTrees.printMessage(Diagnostic.Kind.ERROR, "Incompatible types",
                             node,
                             cut);
                 }
+/*
+                if (
+                        node.getKind() == Tree.Kind.ASSIGNMENT ||
+                        node.getKind() == Tree.Kind.DIVIDE_ASSIGNMENT ||
+                        node.getKind() == Tree.Kind.REMAINDER_ASSIGNMENT ||
+                        node.getKind() == Tree.Kind.MULTIPLY_ASSIGNMENT ||
+                        node.getKind() == Tree.Kind.PLUS_ASSIGNMENT ||
+                        node.getKind() == Tree.Kind.MINUS_ASSIGNMENT
+                ) {
+                    mTrees.printMessage(Diagnostic.Kind.NOTE, node.getLeftOperand().getKind().name(), node, cut);
+                }
+
+ */
 
                 return generalizeTypes(l, r);
             }
