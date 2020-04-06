@@ -2,10 +2,6 @@ package annvisitor;
 
 import ann.Subtype;
 import ann.subtype.*;
-import ann.subtype.Double;
-import ann.subtype.Float;
-import ann.subtype.Long;
-import ann.subtype.Str;
 import com.sun.source.tree.*;
 import com.sun.source.util.TreeScanner;
 import com.sun.source.util.Trees;
@@ -13,7 +9,10 @@ import com.sun.source.util.Trees;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.MirroredTypeException;
+import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementScanner7;
 import javax.tools.Diagnostic;
 import java.util.*;
@@ -21,79 +20,21 @@ import java.util.List;
 
 public class SubtypeCheckVisitor extends ElementScanner7<Void, Void> {
     private final Trees mTrees;
+    private final ProcessingEnvironment procEnv;
 
     public SubtypeCheckVisitor(ProcessingEnvironment processingEnvironment) {
         super();
         this.mTrees = Trees.instance(processingEnvironment);
+        this.procEnv = processingEnvironment;
     }
 
     //using non annotated but subtyped local vars
     @Override
     public Void visitExecutable(ExecutableElement e, Void aVoid) {
         CompilationUnitTree cut = mTrees.getPath(e).getCompilationUnit();
-        Map<Element, Class<?>> localVarsTypes = new HashMap<>();
+        Map<Element, String> localVarsTypes = new HashMap<>();
 
-        new TreeScanner<Class<?>, Void>() {
-            // TODO: unit tests
-            private boolean findPath(Class<?> c, Class<?> root,
-                                     LinkedList<Class<?>> path) {
-                if (c == null || root == null) {
-                    return false;
-                }
-
-                while (!c.getName().equals(root.getName())) {
-                    if (c.getName().equals(Top.class.getName())) {
-                        return false;
-                    }
-                    path.addFirst(c);
-                    Class<?>[] allSupInterfaces = c.getInterfaces();
-                    if (allSupInterfaces.length == 0) {
-                        c = Top.class;
-                    } else {
-                        c = allSupInterfaces[0]; // multiple inheritance is prohibited
-                    }
-                }
-                path.addFirst(c);
-
-                return true;
-            }
-
-            // TODO: unit tests
-            private Class<?> generalizeTypes(Class<?> r, Class<?> l) {
-                if (r.getName().equals(l.getName())) {
-                    return r;
-                }
-
-                LinkedList<Class<?>> anc1 = new LinkedList<>();
-                LinkedList<Class<?>> anc2 = new LinkedList<>();
-                Class<?> commonAnc = Top.class;
-
-                if (findPath(r, Top.class, anc1) && findPath(l, Top.class, anc2)) {
-                    Iterator<Class<?>> it1 = anc1.listIterator();
-                    Iterator<Class<?>> it2 = anc2.listIterator();
-                    Class<?> lastCommon;
-
-                    while (it1.hasNext() && it2.hasNext()) {
-                        lastCommon = it1.next();
-                        if (lastCommon.getName().equals(it2.next().getName())) {
-                            commonAnc = lastCommon;
-                        } else {
-                            break;
-                        }
-                    }
-                }
-
-                return commonAnc;
-            }
-
-            private boolean isSubtype(Class<?> subt, Class<?> supt) {
-                if (supt.getName().equals(Top.class.getName())) {
-                    return true;
-                }
-                LinkedList<Class<?>> buf = new LinkedList<>();
-                return findPath(subt, supt, buf);
-            }
-
+        new TreeScanner<String, Void>() {
             private ResultKind checkParamsMatching(List<? extends ExpressionTree> actualParams,
                                                    ExecutableElement invokedMethod,
                                                    Void p) {
@@ -114,11 +55,22 @@ public class SubtypeCheckVisitor extends ElementScanner7<Void, Void> {
                             ExpressionTree var1 = it1.next();
                             VariableElement var2 = it2.next();
 
-                            Class<?> type1 = scan(var1, p);
+                            String type1 = scan(var1, p);
+                            String type2 = Top.class.getName();
                             Subtype ann2 = var2.getAnnotation(Subtype.class);
-                            Class<?> type2 = ann2 != null ? ann2.value() : Top.class;
-
-                            if (!isSubtype(type1, type2)) {
+                            TypeMirror value = null;
+                            if (ann2 != null) {
+                                try {
+                                    ann2.value();
+                                } catch (MirroredTypeException mte) {
+                                    value = mte.getTypeMirror();
+                                }
+                                if (value != null) {
+                                    type2 = value.toString();
+                                }
+                            }
+                            // TODO: add checks subtype
+                            if (!type1.equals(type2)) {
                                 return ResultKind.TYPE_MISMATCH_PARAMS;
                             }
                         }
@@ -159,74 +111,98 @@ public class SubtypeCheckVisitor extends ElementScanner7<Void, Void> {
             }
 
             @Override
-            public Class<?> visitMethodInvocation(MethodInvocationTree node, Void aVoid) {
-                mTrees.printMessage(Diagnostic.Kind.NOTE, "enter in new class visitor", node, cut);
+            public String visitMethodInvocation(MethodInvocationTree node, Void aVoid) {
                 // element of a current invoked method
                 ExecutableElement invokedMethod = (ExecutableElement) mTrees.getElement(mTrees.getPath(cut, node));
                 List<? extends ExpressionTree> actualParams = node.getArguments();
-                mTrees.printMessage(Diagnostic.Kind.NOTE, "find params", node, cut);
                 printResultInfo(node, checkParamsMatching(actualParams, invokedMethod, aVoid));
+
                 Subtype ann = invokedMethod.getAnnotation(Subtype.class);
-                // TODO:
-                return ann != null ? ann.value() : Top.class;
+                String type = Top.class.getName();
+                TypeMirror value = null;
+                if (ann != null) {
+                    try {
+                        ann.value();
+                    } catch (MirroredTypeException mte) {
+                        value = mte.getTypeMirror();
+                    }
+                    if (value != null) {
+                        type = value.toString();
+                    }
+                }
+                return type;
             }
 
             @Override
-            public Class<?> visitNewClass(NewClassTree node, Void aVoid) {
+            public String visitNewClass(NewClassTree node, Void aVoid) {
                 // element of a current invoked method
                 ExecutableElement invokedMethod = (ExecutableElement) mTrees.getElement(mTrees.getPath(cut, node));
                 List<? extends ExpressionTree> actualParams = node.getArguments();
 
                 printResultInfo(node, checkParamsMatching(actualParams, invokedMethod, aVoid));
-                // TODO:
-                return Top.class;
+                return Top.class.getName();
             }
 
             @Override
-            public Class<?> visitReturn(ReturnTree node, Void aVoid) {
-                Class<?> res = super.visitReturn(node, aVoid);
+            public String visitReturn(ReturnTree node, Void aVoid) {
+                String type = super.visitReturn(node, aVoid);
                 Subtype ann = e.getAnnotation(Subtype.class);
-
+                TypeMirror value = null;
                 if (ann != null) {
-                    if (res == null || !ann.value().equals(res)) {
-                        mTrees.printMessage(Diagnostic.Kind.ERROR, "Incorrect return type",
-                                node,
-                                cut);
+                    try {
+                        ann.value();
+                    } catch (MirroredTypeException mte) {
+                        value = mte.getTypeMirror();
                     }
-                    res = ann.value();
+                    if (value != null) {
+                        if (type == null || !value.toString().equals(type)) {
+                            mTrees.printMessage(Diagnostic.Kind.ERROR, "Incorrect return type",
+                                    node,
+                                    cut);
+                        }
+                        type = value.toString();
+                    }
                 }
 
-                if (res == null) {
-                    // TODO: add correct return statement
-                    res = Top.class;
+                if (type == null) {
+                    type = Top.class.getName();
                 }
 
-                return res;
+                return type;
             }
 
             @Override
-            public Class<?> visitVariable(VariableTree node, Void aVoid) {
-                // inferred type
-                Class<?> res = super.visitVariable(node, aVoid);
+            public String visitVariable(VariableTree node, Void aVoid) {
+                String type = Top.class.getName();
+                if (node.getInitializer() != null) {
+                    // inferred type
+                    type = scan(node.getInitializer(), aVoid);
+                }
                 // variable declaration
                 Element var = mTrees.getElement(mTrees.getPath(cut, node));
                 Subtype ann = var.getAnnotation(Subtype.class);
-
+                TypeMirror value = null;
                 if (ann != null) {
-                    localVarsTypes.put(var, ann.value());
-                    res = ann.value();
-                } else if (res != null) {
-                    localVarsTypes.put(var, res);
+                    try {
+                        ann.value();
+                    } catch (MirroredTypeException mte) {
+                        value = mte.getTypeMirror();
+                    }
+                    if (value != null) {
+                        localVarsTypes.put(var, value.toString());
+                        type = value.toString();
+                    }
                 } else {
-                    // TODO: add correct return statement
-                    res = Top.class;
+                    localVarsTypes.put(var, type);
                 }
-                return res;
+
+                return type;
             }
 
             @Override
-            public Class<?> visitLiteral(LiteralTree node, Void aVoid) {
-                Class<?> res = Top.class;
+            public String visitLiteral(LiteralTree node, Void aVoid) {
+                String res = Top.class.getName();
+                /*
                 switch (node.getKind()) {
                     case INT_LITERAL:
                         res = Int.class;
@@ -251,14 +227,16 @@ public class SubtypeCheckVisitor extends ElementScanner7<Void, Void> {
                         break;
                     default:
                 }
+
+                 */
                 return res;
             }
 
             @Override
-            public Class<?> visitBinary(BinaryTree node, Void aVoid) {
-                Class<?> l = this.scan(node.getLeftOperand(), aVoid);
-                Class<?> r = this.scan(node.getRightOperand(), aVoid);
-
+            public String visitBinary(BinaryTree node, Void aVoid) {
+                String l = this.scan(node.getLeftOperand(), aVoid);
+                String r = this.scan(node.getRightOperand(), aVoid);
+                /*
                 if (node.getKind() == Tree.Kind.PLUS) {
                     if (isSubtype(l, Str.class) || isSubtype(r, Str.class)) {
                         Class<?> commonAnc = generalizeTypes(l, r);
@@ -270,11 +248,11 @@ public class SubtypeCheckVisitor extends ElementScanner7<Void, Void> {
                     }
                 }
 
+                 */
+
                 // TODO: check that l and r are subtype of int/double/...
-                if (!isSubtype(r, l) && !isSubtype(l, r)) {
-                    mTrees.printMessage(Diagnostic.Kind.ERROR, "Incompatible types",
-                            node,
-                            cut);
+                if (!l.equals(r)) {
+                    printResultInfo(node, ResultKind.TYPE_MISMATCH_OPERAND);
                 }
 /*
                 if (
@@ -289,29 +267,29 @@ public class SubtypeCheckVisitor extends ElementScanner7<Void, Void> {
                 }
 
  */
-
-                return generalizeTypes(l, r);
+                // TODO: add correct return statement
+                return l;
             }
 
             @Override
-            public Class<?> visitIdentifier(IdentifierTree node, Void aVoid) {
-                // TODO: add correct return statement
-                Class<?> res = Top.class;
+            public String visitIdentifier(IdentifierTree node, Void aVoid) {
+                String res = Top.class.getName();
 
                 Element var = mTrees.getElement(mTrees.getPath(cut, node));
                 Subtype ann = var.getAnnotation(Subtype.class);
+                TypeMirror value = null;
                 if (ann != null) {
-                    res = ann.value();
+                    try {
+                        ann.value();
+                    } catch (MirroredTypeException mte) {
+                        value = mte.getTypeMirror();
+                    }
+                    if (value != null) {
+                        res = value.toString();
+                    }
                 } else if (localVarsTypes.containsKey(var)) {
                     res = localVarsTypes.get(var);
                 }
-                /* if (!res.equals("unit")) {
-                    mTrees.printMessage(Diagnostic.Kind.NOTE, res,
-                            node,
-                            cut);
-                }
-
-                 */
                 return res;
             }
 
