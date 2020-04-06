@@ -1,2 +1,4 @@
 rootProject.name = 'student-project-subtyping'
+include 'examples'
+include 'subtyping-annotation-processor'
 

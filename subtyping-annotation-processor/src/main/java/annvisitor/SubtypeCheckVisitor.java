@@ -1,7 +1,7 @@
 package annvisitor;
 
 import ann.Subtype;
-import ann.subtype.*;
+import ann.subtype.Top;
 import com.sun.source.tree.*;
 import com.sun.source.util.TreeScanner;
 import com.sun.source.util.Trees;
@@ -9,14 +9,15 @@ import com.sun.source.util.Trees;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementScanner7;
 import javax.tools.Diagnostic;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 public class SubtypeCheckVisitor extends ElementScanner7<Void, Void> {
     private final Trees mTrees;
@@ -80,7 +81,7 @@ public class SubtypeCheckVisitor extends ElementScanner7<Void, Void> {
                 return ResultKind.OK;
             }
 
-            private void printResultInfo(ExpressionTree node, ResultKind res) {
+            private void printResultInfo(Tree node, ResultKind res) {
                 switch (res) {
                     case NULLITY:
                         mTrees.printMessage(Diagnostic.Kind.ERROR,
@@ -102,7 +103,13 @@ public class SubtypeCheckVisitor extends ElementScanner7<Void, Void> {
                         break;
                     case TYPE_MISMATCH_OPERAND:
                         mTrees.printMessage(Diagnostic.Kind.ERROR,
-                                "Incompatible operands' types",
+                                "Incompatible operands types",
+                                node,
+                                cut);
+                        break;
+                    case INCORRECT_RETURN_TYPE:
+                        mTrees.printMessage(Diagnostic.Kind.ERROR,
+                                "Incorrect return type",
                                 node,
                                 cut);
                     case OK:
@@ -156,9 +163,7 @@ public class SubtypeCheckVisitor extends ElementScanner7<Void, Void> {
                     }
                     if (value != null) {
                         if (type == null || !value.toString().equals(type)) {
-                            mTrees.printMessage(Diagnostic.Kind.ERROR, "Incorrect return type",
-                                    node,
-                                    cut);
+                            printResultInfo(node, ResultKind.INCORRECT_RETURN_TYPE);
                         }
                         type = value.toString();
                     }
@@ -303,6 +308,7 @@ public class SubtypeCheckVisitor extends ElementScanner7<Void, Void> {
         DIFFERENT_SIZE,
         TYPE_MISMATCH_PARAMS,
         TYPE_MISMATCH_OPERAND,
+        INCORRECT_RETURN_TYPE,
         OK
     }
 }
