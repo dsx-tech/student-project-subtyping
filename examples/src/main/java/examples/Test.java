@@ -19,7 +19,7 @@ public class Test {
         long var4 = var1 + var3;
         BankAccount bankAccount1 = new BankAccount(var4);
         BankAccount bankAccount2 = new BankAccount(var1);
-        bankAccount1.transferFrom(bankAccount2, var1);
+        System.out.println(bankAccount1.transferFrom(bankAccount2, var1));
         testMethod2(var2 + testMethod2(var2));
     }
 
@@ -28,6 +28,10 @@ public class Test {
         @Subtype(Dollar.class)
         int value = sum;
         return value;
+    }
+    @Subtype(Dollar.class)
+    public static int testMethod3() {
+        return testMethod2(var5);
     }
 
     public static void main(String[] args) {
