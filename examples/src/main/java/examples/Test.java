@@ -12,14 +12,18 @@ public class Test {
     }
 
     private static void testMethod1() {
-        @Subtype(Euro.class)
+        @Subtype(SubEuro.class)
         int var1 = 1000;
+
         @Subtype(Dollar.class)
         int var2 = 200;
+
         long var4 = var1 + var3;
+
         BankAccount bankAccount1 = new BankAccount(var4);
         BankAccount bankAccount2 = new BankAccount(var1);
-        System.out.println(bankAccount1.transferFrom(bankAccount2, var1));
+
+        bankAccount1.transferFrom(bankAccount2, var1);
         testMethod2(var2 + testMethod2(var2));
     }
 

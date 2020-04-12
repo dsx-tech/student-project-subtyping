@@ -197,7 +197,7 @@ public class SubtypeTreeScanner extends TreeScanner<String, String> {
                 break;
             case NON_ANNOTATED_PARAM:
                 mTrees.printMessage(Diagnostic.Kind.WARNING,
-                        "Non annotated actual parameter use as annotated",
+                        "Annotated actual parameter use as non annotated",
                         node,
                         cut);
                 break;
@@ -216,6 +216,7 @@ public class SubtypeTreeScanner extends TreeScanner<String, String> {
     public String visitMethod(MethodTree node, String aVoid) {
         // node is a constructor
         if (node.getReturnType() == null) {
+            scan(node.getBody(), aVoid);
             return Top.class.getName();
         }
 
@@ -226,6 +227,7 @@ public class SubtypeTreeScanner extends TreeScanner<String, String> {
         if (ann != null) {
             if (method.getReturnType().getKind() == TypeKind.VOID) {
                 printResultInfo(node, ResultKind.ANNOTATION_ON_VOID);
+                scan(node.getBody(), aVoid);
                 return null;
             }
             try {
@@ -235,7 +237,7 @@ public class SubtypeTreeScanner extends TreeScanner<String, String> {
             }
             if (value != null) {
                 if (node.getBody() != null) {
-                    // all return expr of body block must be subtype of value
+                    // all return expressions of body block must be subtype of value
                     scan(node.getBody(), value.toString());
                 } else if (node.getDefaultValue() != null) {
                         String type = scan(node.getDefaultValue(), aVoid);
@@ -248,6 +250,9 @@ public class SubtypeTreeScanner extends TreeScanner<String, String> {
                 printResultInfo(node, ResultKind.MISSING_VALUE);
             }
         }
+
+        scan(node.getBody(), aVoid);
+        scan(node.getDefaultValue(), aVoid);
 
         return method.getReturnType().getKind() == TypeKind.VOID ? null : Top.class.getName();
     }
@@ -367,7 +372,6 @@ public class SubtypeTreeScanner extends TreeScanner<String, String> {
                 break;
             default:
                 printResultInfo(node, ResultKind.WRONG_APPLY_OPERATOR);
-
         }
         return var;
     }
@@ -403,8 +407,26 @@ public class SubtypeTreeScanner extends TreeScanner<String, String> {
 
     @Override
     public String visitMemberSelect(MemberSelectTree node, String aVoid) {
-        // TODO: implement
-        return super.visitMemberSelect(node, aVoid);
+        String type = Top.class.getName();
+
+        Element field = mTrees.getElement(mTrees.getPath(cut, node));
+        Subtype ann = field.getAnnotation(Subtype.class);
+        TypeMirror value = null;
+
+        if (ann != null) {
+            try {
+                ann.value();
+            } catch (MirroredTypeException mte) {
+                value = mte.getTypeMirror();
+            }
+            if (value != null) {
+                type = value.toString();
+            } else {
+                printResultInfo(node, ResultKind.MISSING_VALUE);
+            }
+        }
+
+        return type;
     }
 
 
@@ -416,11 +438,12 @@ public class SubtypeTreeScanner extends TreeScanner<String, String> {
 
     @Override
     public String visitIdentifier(IdentifierTree node, String aVoid) {
-        String res = Top.class.getName();
+        String type = Top.class.getName();
 
         Element var = mTrees.getElement(mTrees.getPath(cut, node));
         Subtype ann = var.getAnnotation(Subtype.class);
         TypeMirror value = null;
+
         if (ann != null) {
             try {
                 ann.value();
@@ -428,12 +451,13 @@ public class SubtypeTreeScanner extends TreeScanner<String, String> {
                 value = mte.getTypeMirror();
             }
             if (value != null) {
-                res = value.toString();
+                type = value.toString();
             }
         } else if (localVarsTypes.containsKey(var)) {
-            res = localVarsTypes.get(var);
+            type = localVarsTypes.get(var);
         }
-        return res;
+
+        return type;
     }
 
     public enum ResultKind {
