@@ -10,6 +10,6 @@ import java.lang.annotation.Target;
         ElementType.LOCAL_VARIABLE,
         ElementType.METHOD})
 @Retention(RetentionPolicy.SOURCE)
-public @interface Subtype {
+public @interface Type {
     Class<?> value();
 }

@@ -1,4 +1,4 @@
 package examples;
 
-public interface Dollar {
+public class Dollar {
 }

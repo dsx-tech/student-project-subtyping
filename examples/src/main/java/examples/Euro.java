@@ -1,4 +1,4 @@
 package examples;
 
-public interface Euro {
+public class Euro {
 }

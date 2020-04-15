@@ -1,23 +1,23 @@
 package examples;
-import ann.Subtype;
+import ann.Type;
 
 public class BankAccount {
-    @Subtype(Euro.class)
+    @Type(Euro.class)
     public long moneyInEuros = 100;
 
-    public BankAccount(@Subtype(Euro.class) long sum) {
+    public BankAccount(@Type(Euro.class) long sum) {
         this.moneyInEuros = sum;
     }
 
-    public void add(@Subtype(Euro.class) int sum) {
+    public void add(@Type(Euro.class) int sum) {
         this.moneyInEuros += sum;
     }
-    public void debit(@Subtype(Euro.class) int sum) {
+    public void debit(@Type(Euro.class) int sum) {
         this.moneyInEuros -= sum;
     }
 
-    @Subtype(Euro.class)
-    public long transferFrom(BankAccount bAcc, @Subtype(Euro.class) int sum) {
+    @Type(Euro.class)
+    public long transferFrom(BankAccount bAcc, @Type(Euro.class) int sum) {
         bAcc.debit(sum);
         this.add(sum);
         return bAcc.moneyInEuros;

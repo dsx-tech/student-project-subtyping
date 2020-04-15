@@ -1,10 +1,10 @@
 package examples;
-import ann.Subtype;
+import ann.Type;
 
 public class Test {
-    @Subtype(Euro.class)
+    @Type(Euro.class)
     private static long var3 = 100;
-    @Subtype(Dollar.class)
+    @Type(Dollar.class)
     private static int var5 = 50;
 
     public Test() {
@@ -12,10 +12,10 @@ public class Test {
     }
 
     private static void testMethod1() {
-        @Subtype(SubEuro.class)
+        @Type(SubEuro.class)
         int var1 = 1000;
 
-        @Subtype(Dollar.class)
+        @Type(Dollar.class)
         int var2 = 200;
 
         long var4 = var1 + var3;
@@ -27,13 +27,18 @@ public class Test {
         testMethod2(var2 + testMethod2(var2));
     }
 
-    @Subtype(Dollar.class)
-    public static int testMethod2(@Subtype(Dollar.class) int sum) {
-        @Subtype(Dollar.class)
+    @Type(Dollar.class)
+    public static int testMethod2(@Type(Dollar.class) int sum) {
         int value = sum;
-        return value;
+        @Type(Dollar.class)
+        int value1 = 123;
+        if (String.valueOf(value).equals("1")) {
+            return value;
+        } else {
+            return value1;
+        }
     }
-    @Subtype(Dollar.class)
+    @Type(Dollar.class)
     public static int testMethod3() {
         return testMethod2(var5);
     }

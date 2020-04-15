@@ -1,7 +1,7 @@
 package annproc;
 
-import ann.Subtype;
-import annvisitor.SubtypeCheckVisitor;
+import ann.Type;
+import annvisitor.ExecutableVisitor;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -14,8 +14,8 @@ import javax.lang.model.util.ElementFilter;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-public class SubtypeProcessor extends AbstractProcessor {
-    private SubtypeCheckVisitor subtypeCheckVisitor;
+public class AnnotationValueTypeProcessor extends AbstractProcessor {
+    private ExecutableVisitor executableVisitor;
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -30,14 +30,14 @@ public class SubtypeProcessor extends AbstractProcessor {
 
         //Set<? extends Element> annotatedDeclarations = roundEnvironment.getElementsAnnotatedWith(Subtype.class);
 
-        subtypeCheckVisitor = new SubtypeCheckVisitor(processingEnv);
+        executableVisitor = new ExecutableVisitor(processingEnv);
         // obtain the root classes of a current round environment
         Set<? extends Element> classes = ElementFilter.typesIn(roundEnvironment.getRootElements());
         for (Element clazz : classes) {
             clazz.getEnclosedElements()
                     .stream()
                     .filter(e -> e.getKind() == ElementKind.CONSTRUCTOR || e.getKind() == ElementKind.METHOD)
-                    .forEach(e -> e.accept(subtypeCheckVisitor, null));
+                    .forEach(e -> e.accept(executableVisitor, null));
         }
 
         return true;
@@ -51,7 +51,7 @@ public class SubtypeProcessor extends AbstractProcessor {
     @Override
     public Set<String> getSupportedAnnotationTypes() {
         Set<String> annotations = new LinkedHashSet<>();
-        annotations.add(Subtype.class.getCanonicalName());
+        annotations.add(Type.class.getCanonicalName());
         return annotations;
     }
 }
