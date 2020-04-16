@@ -11,5 +11,6 @@ public enum ResultKind {
     ANNOTATION_ON_VOID,
     NON_ANNOTATED_PARAM,
     MISSING_VALUE,
+    MISSING_PERMISSION_VALUE,
     OK
 }
