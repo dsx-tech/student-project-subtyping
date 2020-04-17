@@ -7,23 +7,20 @@ import annvisitor.util.ResultKind;
 
 import static annvisitor.util.AnnotationValueSubtypes.*;
 import static annvisitor.util.Messager.printResultInfo;
+import static annvisitor.util.TypeOperatorPermissionChecker.isOperationAllow;
 
 import com.sun.source.tree.*;
-import com.sun.source.util.TreePath;
 import com.sun.source.util.TreeScanner;
 import com.sun.source.util.Trees;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.ElementFilter;
 import java.util.*;
-import java.util.stream.Collectors;
 
 // first String for inferred type, second  String for type checks of return expression
 public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> {
@@ -86,7 +83,7 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
                         }
                     }
                     if (type1 != null && !type1.equals(Top.class.getName()) && type2.equals(Top.class.getName())) {
-                        return ResultKind.NON_ANNOTATED_PARAM;
+                        return ResultKind.NON_ANNOTATED_PARAM_WARNING;
                     }
                     if (!isSubtype(type1, type2, processingEnv)) {
                         return ResultKind.TYPE_MISMATCH_PARAMS;
@@ -96,68 +93,6 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
         }
 
         return ResultKind.OK;
-    }
-
-    private String treeKindToFieldName(Tree.Kind op) {
-        switch (op) {
-            case POSTFIX_DECREMENT:
-            case PREFIX_DECREMENT:
-                return "DECREMENT";
-            case POSTFIX_INCREMENT:
-            case PREFIX_INCREMENT:
-                return "INCREMENT";
-            case EQUAL_TO:
-            case NOT_EQUAL_TO:
-            case GREATER_THAN_EQUAL:
-            case LESS_THAN_EQUAL:
-            case LESS_THAN:
-            case GREATER_THAN:
-                return "EQUALS";
-            default:
-                return op.toString();
-        }
-    }
-
-    private PermissionPolicy isOperationAllow(Tree.Kind op, String type) {
-        LinkedList<String> path = new LinkedList<>();
-        PermissionPolicy result = PermissionPolicy.ALLOW;
-
-        if (findPath(type, Top.class.getName(), path, processingEnv)) {
-            String fieldName = treeKindToFieldName(op);
-            for (String type1 : path) {
-                if (!type1.contentEquals(Top.class.getName())) {
-                    TypeElement clazz = processingEnv.getElementUtils().getTypeElement(type1);
-                    List<VariableElement> fields = ElementFilter
-                            .fieldsIn(clazz.getEnclosedElements())
-                            .stream()
-                            .filter(ve -> ve.getSimpleName().contentEquals(fieldName))
-                            .collect(Collectors.toList());
-                    VariableTree field = fields.isEmpty() ? null : (VariableTree) mTrees.getTree(fields.get(0));
-                    if (field != null) {
-                        ExpressionTree init = field.getInitializer();
-                        if (init != null && init.getKind() == Tree.Kind.MEMBER_SELECT) {
-                            // todo: implement correctly
-                            String value = ((MemberSelectTree) init).getIdentifier().toString();
-                            switch (value) {
-                                case "ALLOW":
-                                    result = PermissionPolicy.ALLOW;
-                                    break;
-                                case "ALLOW_WITH_WARNING":
-                                    result = PermissionPolicy.ALLOW_WITH_WARNING;
-                                    break;
-                                case "FORBID":
-                                    result = PermissionPolicy.FORBID;
-                                    break;
-                            }
-                        } else {
-                            printResultInfo(field, ResultKind.MISSING_PERMISSION_VALUE, mTrees, cut);
-                        }
-                    }
-                }
-            }
-        }
-
-        return result;
     }
 
     @Override
@@ -314,13 +249,25 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
         if (!expr.equals(Top.class.getName()) && !isSubtype(expr, var, processingEnv)) {
             printResultInfo(node, ResultKind.INCORRECT_VARIABLE_TYPE, mTrees, cut);
         }
-        PermissionPolicy resOnVar = isOperationAllow(op, var);
-        PermissionPolicy resOnExpr = isOperationAllow(op, expr);
-        if (resOnVar != PermissionPolicy.ALLOW) {
-            printResultInfo(node, ResultKind.WRONG_APPLY_OPERATOR , mTrees, cut);
+        PermissionPolicy permissionForVar = isOperationAllow(op, var, processingEnv);
+        PermissionPolicy permissionForExpr = isOperationAllow(op, expr, processingEnv);
+        switch (permissionForExpr) {
+            case FORBID:
+                printResultInfo(node.getExpression(), ResultKind.WRONG_APPLY_OPERATOR, mTrees, cut);
+                break;
+            case ALLOW_WITH_WARNING:
+                printResultInfo(node.getExpression(), ResultKind.APPLY_OPERATOR_WITH_WARNING, mTrees, cut);
+                break;
+            default:
         }
-        if (resOnExpr != PermissionPolicy.ALLOW) {
-            printResultInfo(node, ResultKind.WRONG_APPLY_OPERATOR, mTrees, cut);
+        switch (permissionForVar) {
+            case FORBID:
+                printResultInfo(node.getVariable(), ResultKind.WRONG_APPLY_OPERATOR, mTrees, cut);
+                break;
+            case ALLOW_WITH_WARNING:
+                printResultInfo(node.getVariable(), ResultKind.APPLY_OPERATOR_WITH_WARNING, mTrees, cut);
+                break;
+            default:
         }
         return var;
     }
@@ -329,9 +276,15 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
     public String visitUnary(UnaryTree node, String aVoid) {
         String type = this.scan(node.getExpression(), aVoid);
         Tree.Kind op = node.getKind();
-        PermissionPolicy resOnExpr = isOperationAllow(op, type);
-        if (resOnExpr != PermissionPolicy.ALLOW) {
-            printResultInfo(node, ResultKind.WRONG_APPLY_OPERATOR, mTrees, cut);
+        PermissionPolicy permissionForExpr = isOperationAllow(op, type, processingEnv);
+        switch (permissionForExpr) {
+            case FORBID:
+                printResultInfo(node.getExpression(), ResultKind.WRONG_APPLY_OPERATOR, mTrees, cut);
+                break;
+            case ALLOW_WITH_WARNING:
+                printResultInfo(node.getExpression(), ResultKind.APPLY_OPERATOR_WITH_WARNING, mTrees, cut);
+                break;
+            default:
         }
         return type;
     }
@@ -344,13 +297,25 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
         if (!isSubtype(l, r, processingEnv) && !isSubtype(r, l, processingEnv)) {
             printResultInfo(node, ResultKind.TYPE_MISMATCH_OPERAND, mTrees, cut);
         }
-        PermissionPolicy resOnL = isOperationAllow(op, l);
-        PermissionPolicy resOnR = isOperationAllow(op, r);
-        if (resOnL != PermissionPolicy.ALLOW) {
-            printResultInfo(node, ResultKind.WRONG_APPLY_OPERATOR, mTrees, cut);
+        PermissionPolicy permissionForLeft = isOperationAllow(op, l, processingEnv);
+        PermissionPolicy permissionForRight = isOperationAllow(op, r, processingEnv);
+        switch (permissionForLeft) {
+            case FORBID:
+                printResultInfo(node.getLeftOperand(), ResultKind.WRONG_APPLY_OPERATOR, mTrees, cut);
+                break;
+            case ALLOW_WITH_WARNING:
+                printResultInfo(node.getLeftOperand(), ResultKind.APPLY_OPERATOR_WITH_WARNING, mTrees, cut);
+                break;
+            default:
         }
-        if (resOnR != PermissionPolicy.ALLOW) {
-            printResultInfo(node, ResultKind.WRONG_APPLY_OPERATOR, mTrees, cut);
+        switch (permissionForRight) {
+            case FORBID:
+                printResultInfo(node.getRightOperand(), ResultKind.WRONG_APPLY_OPERATOR, mTrees, cut);
+                break;
+            case ALLOW_WITH_WARNING:
+                printResultInfo(node.getRightOperand(), ResultKind.APPLY_OPERATOR_WITH_WARNING, mTrees, cut);
+                break;
+            default:
         }
         return generalizeTypes(l, r, processingEnv);
     }

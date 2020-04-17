@@ -43,6 +43,11 @@ public class Messager {
                         node,
                         cut);
                 break;
+            case WRONG_PERMISSION_VALUE:
+                tree.printMessage(Diagnostic.Kind.ERROR,
+                        "Incorrect value of permission variable",
+                        node,
+                        cut);
             case INCORRECT_RETURN_TYPE:
                 tree.printMessage(Diagnostic.Kind.ERROR,
                         "Incorrect return type",
@@ -61,7 +66,7 @@ public class Messager {
                         node,
                         cut);
                 break;
-            case NON_ANNOTATED_PARAM:
+            case NON_ANNOTATED_PARAM_WARNING:
                 tree.printMessage(Diagnostic.Kind.WARNING,
                         "Annotated actual parameter use as non annotated",
                         node,
@@ -73,6 +78,11 @@ public class Messager {
                         node,
                         cut);
                 break;
+            case APPLY_OPERATOR_WITH_WARNING:
+                tree.printMessage(Diagnostic.Kind.WARNING,
+                        "Apply operator with warning",
+                        node,
+                        cut);
             case OK:
             default:
         }
