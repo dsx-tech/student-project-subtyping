@@ -23,7 +23,7 @@ public class TypeOperatorPermissionChecker {
 
     }
 
-    private static String treeKindToFieldName(Tree.Kind op) {
+    public static String treeKindToFieldName(Tree.Kind op) {
         switch (op) {
             case POSTFIX_DECREMENT:
             case PREFIX_DECREMENT:
@@ -43,7 +43,6 @@ public class TypeOperatorPermissionChecker {
         }
     }
 
-    // TODO: add unit tests
     public static PermissionPolicy isOperationAllow(Tree.Kind op, String type, ProcessingEnvironment processingEnv) {
         LinkedList<String> path = new LinkedList<>();
         PermissionPolicy result = PermissionPolicy.ALLOW;

@@ -7,12 +7,13 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 
 public class AnnotationValueSubtypes {
     private AnnotationValueSubtypes() {
 
     }
-    // TODO: unit tests
+
     public static boolean findPath(String leaf, String root,
                                    LinkedList<String> path,
                                    ProcessingEnvironment processingEnv) {
@@ -43,32 +44,38 @@ public class AnnotationValueSubtypes {
         return true;
     }
 
-    // TODO: unit tests
-    public static String generalizeTypes(String r, String l, ProcessingEnvironment processingEnv) {
-        if (r.equals(l)) {
-            return r;
+    public static String generalizeTypes(String type1, String type2, ProcessingEnvironment processingEnv) {
+        if (type1.equals(type2)) {
+            return type1;
         }
 
-        LinkedList<String> anc1 = new LinkedList<>();
-        LinkedList<String> anc2 = new LinkedList<>();
-        String commonAnc = Top.class.getName();
+        LinkedList<String> path1 = new LinkedList<>();
+        LinkedList<String> path2 = new LinkedList<>();
 
-        if (findPath(r, commonAnc, anc1, processingEnv) && findPath(l, commonAnc, anc2, processingEnv)) {
-            Iterator<String> it1 = anc1.listIterator();
-            Iterator<String> it2 = anc2.listIterator();
-            String lastCommon;
+        if (findPath(type1, Top.class.getName(), path1, processingEnv) &&
+                findPath(type2, Top.class.getName(), path2, processingEnv)) {
+            return findMostCommonType(path1, path2);
+        }
 
-            while (it1.hasNext() && it2.hasNext()) {
-                lastCommon = it1.next();
-                if (lastCommon.equals(it2.next())) {
-                    commonAnc = lastCommon;
-                } else {
-                    break;
-                }
+        return Top.class.getName();
+    }
+    //TODO: add unit test
+    public static String findMostCommonType(List<String> path1, List<String> path2) {
+        Iterator<String> it1 = path1.listIterator();
+        Iterator<String> it2 = path2.listIterator();
+        String commonSuperType = Top.class.getName();
+        String lastCommon;
+
+        while (it1.hasNext() && it2.hasNext()) {
+            lastCommon = it1.next();
+            if (lastCommon.equals(it2.next())) {
+                commonSuperType = lastCommon;
+            } else {
+                break;
             }
         }
 
-        return commonAnc;
+        return commonSuperType;
     }
 
     public static boolean isSubtype(String subt, String supt, ProcessingEnvironment processingEnv) {
