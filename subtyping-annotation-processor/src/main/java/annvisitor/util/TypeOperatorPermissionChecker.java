@@ -83,7 +83,7 @@ public class TypeOperatorPermissionChecker {
                             }
                         } else {
                             CompilationUnitTree cut = tree.getPath(fields.get(0)).getCompilationUnit();
-                            printResultInfo(field, ResultKind.WRONG_PERMISSION_VALUE, tree, cut);
+                            printResultInfo(field, "", "", ResultKind.WRONG_PERMISSION_VALUE, tree, cut);
                         }
 
                         break;

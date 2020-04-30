@@ -11,76 +11,90 @@ public class Messager {
 
     }
 
-    public static void printResultInfo(Tree node, ResultKind res, Trees tree, CompilationUnitTree cut) {
+    public static void printResultInfo(Tree node, String name1, String name2, ResultKind res,
+                                       Trees tree, CompilationUnitTree cut) {
+        StringBuilder errorMessage = new StringBuilder();
         switch (res) {
-            case NULLITY:
+            case ARGUMENT_MISMATCH:
+                errorMessage
+                        .append("argument mismatch: ")
+                        .append(name1)
+                        .append(" cannot be converted to ")
+                        .append(name2);
                 tree.printMessage(Diagnostic.Kind.ERROR,
-                        "Reference to actual or formal parameters list is null",
-                        node,
-                        cut);
-                break;
-            case DIFFERENT_SIZE:
-                tree.printMessage(Diagnostic.Kind.ERROR,
-                        "Count of actual parameters does not correspond to formal's",
-                        node,
-                        cut);
-                break;
-            case TYPE_MISMATCH_PARAMS:
-                tree.printMessage(Diagnostic.Kind.ERROR,
-                        "Types on actual parameter does not corresponds to formal's",
+                        errorMessage.toString(),
                         node,
                         cut);
                 break;
             case TYPE_MISMATCH_OPERAND:
+                errorMessage
+                        .append("incompatible types: ")
+                        .append(name1)
+                        .append(" cannot be converted to ")
+                        .append(name2);
                 tree.printMessage(Diagnostic.Kind.ERROR,
-                        "Incompatible operands types",
+                        errorMessage.toString(),
                         node,
                         cut);
                 break;
             case WRONG_APPLY_OPERATOR:
+                errorMessage
+                        .append("operator ")
+                        .append(name1)
+                        .append(" cannot be applied to ")
+                        .append(name2);
                 tree.printMessage(Diagnostic.Kind.ERROR,
-                        "Operator cannot be apply to the operand",
+                        errorMessage.toString(),
                         node,
                         cut);
                 break;
             case WRONG_PERMISSION_VALUE:
                 tree.printMessage(Diagnostic.Kind.ERROR,
-                        "Incorrect value of permission variable",
+                        "incorrect value of permission variable",
                         node,
                         cut);
             case INCORRECT_RETURN_TYPE:
+                errorMessage
+                        .append("incompatible types: cannot return ")
+                        .append(name1)
+                        .append(" value from a method with ")
+                        .append(name2)
+                        .append(" result type");
                 tree.printMessage(Diagnostic.Kind.ERROR,
-                        "Incorrect return type",
-                        node,
-                        cut);
-                break;
-            case INCORRECT_VARIABLE_TYPE:
-                tree.printMessage(Diagnostic.Kind.ERROR,
-                        "Incorrect variable type",
+                        errorMessage.toString(),
                         node,
                         cut);
                 break;
             case ANNOTATION_ON_VOID:
                 tree.printMessage(Diagnostic.Kind.ERROR,
-                        "Annotation on method which returns a void value",
+                        "cannot return a value from a method with a void return type",
                         node,
                         cut);
                 break;
             case NON_ANNOTATED_PARAM_WARNING:
+                errorMessage
+                        .append("annotated argument ")
+                        .append(name1)
+                        .append(" used as non annotated");
                 tree.printMessage(Diagnostic.Kind.WARNING,
-                        "Annotated actual parameter use as non annotated",
+                        errorMessage.toString(),
                         node,
                         cut);
                 break;
             case MISSING_VALUE:
                 tree.printMessage(Diagnostic.Kind.ERROR,
-                        "Missing annotation value",
+                        "missing annotation value",
                         node,
                         cut);
                 break;
             case APPLY_OPERATOR_WITH_WARNING:
+                errorMessage
+                        .append("apply operator ")
+                        .append(name1)
+                        .append(" to ")
+                        .append(name2);
                 tree.printMessage(Diagnostic.Kind.WARNING,
-                        "Apply operator with warning",
+                        errorMessage.toString(),
                         node,
                         cut);
             case OK:
