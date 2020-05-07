@@ -27,11 +27,7 @@ public class AnnotationValueTypeProcessor extends AbstractProcessor {
         if (annotations.isEmpty()) {
             return false;
         }
-
-        //Set<? extends Element> annotatedDeclarations = roundEnvironment.getElementsAnnotatedWith(Subtype.class);
-
         executableVisitor = new ExecutableVisitor(processingEnv);
-        // obtain the root classes of a current round environment
         Set<? extends Element> classes = ElementFilter.typesIn(roundEnvironment.getRootElements());
         for (Element clazz : classes) {
             clazz.getEnclosedElements()
@@ -39,7 +35,6 @@ public class AnnotationValueTypeProcessor extends AbstractProcessor {
                     .filter(e -> e.getKind() == ElementKind.CONSTRUCTOR || e.getKind() == ElementKind.METHOD)
                     .forEach(e -> e.accept(executableVisitor, null));
         }
-
         return true;
     }
 

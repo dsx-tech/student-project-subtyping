@@ -2,7 +2,7 @@ package ann.type;
 
 import annvisitor.util.PermissionPolicy;
 
-public class Top {
+public class Raw {
     public static final PermissionPolicy PLUS = PermissionPolicy.ALLOW;
     public static final PermissionPolicy MINUS = PermissionPolicy.ALLOW;
     public static final PermissionPolicy MULTIPLY = PermissionPolicy.ALLOW;

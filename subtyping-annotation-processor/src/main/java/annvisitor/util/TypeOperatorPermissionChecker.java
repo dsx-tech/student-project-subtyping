@@ -1,6 +1,6 @@
 package annvisitor.util;
 
-import ann.type.Top;
+import ann.type.Raw;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.Tree;
@@ -47,13 +47,13 @@ public class TypeOperatorPermissionChecker {
         LinkedList<String> path = new LinkedList<>();
         PermissionPolicy result = PermissionPolicy.ALLOW;
 
-        if (findPath(type, Top.class.getName(), path, processingEnv)) {
+        if (findPath(type, Raw.class.getName(), path, processingEnv)) {
 
             String fieldName = treeKindToFieldName(op);
             Trees tree = Trees.instance(processingEnv);
 
             for (String type1 : path) {
-                if (!type1.contentEquals(Top.class.getName())) {
+                if (!type1.contentEquals(Raw.class.getName())) {
                     TypeElement clazz = processingEnv.getElementUtils().getTypeElement(type1);
                     List<VariableElement> fields = ElementFilter
                             .fieldsIn(clazz.getEnclosedElements())

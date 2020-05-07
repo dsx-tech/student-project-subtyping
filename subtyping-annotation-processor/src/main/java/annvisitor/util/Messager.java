@@ -81,12 +81,6 @@ public class Messager {
                         node,
                         cut);
                 break;
-            case MISSING_VALUE:
-                tree.printMessage(Diagnostic.Kind.ERROR,
-                        "missing annotation value",
-                        node,
-                        cut);
-                break;
             case APPLY_OPERATOR_WITH_WARNING:
                 errorMessage
                         .append("apply operator ")
@@ -97,6 +91,18 @@ public class Messager {
                         errorMessage.toString(),
                         node,
                         cut);
+                break;
+            case UNSAFE_TYPE_CAST:
+                errorMessage
+                        .append("unsafe type cast: ")
+                        .append(name1)
+                        .append(" to ")
+                        .append(name2);
+                tree.printMessage(Diagnostic.Kind.WARNING,
+                        errorMessage.toString(),
+                        node,
+                        cut);
+                break;
             case OK:
             default:
         }
