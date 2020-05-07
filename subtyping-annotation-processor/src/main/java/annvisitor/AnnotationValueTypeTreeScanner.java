@@ -3,6 +3,7 @@ package annvisitor;
 import ann.Type;
 import ann.UnsafeCast;
 import ann.type.Raw;
+import ann.type.Top;
 import annvisitor.util.PermissionPolicy;
 import annvisitor.util.ResultKind;
 
@@ -157,7 +158,11 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
         String type = super.visitReturn(node, annotatedRetType);
         if (type != null && annotatedRetType != null) {
             if (!isSubtype(type, annotatedRetType, processingEnv)) {
-                printResultInfo(node, "'" + type + "'", "'" + annotatedRetType + "'", ResultKind.INCORRECT_RETURN_TYPE, mTrees, cut);
+                printResultInfo(node,
+                        "'" + type + "'",
+                        "'" + annotatedRetType + "'",
+                        ResultKind.INCORRECT_RETURN_TYPE,
+                        mTrees, cut);
             }
         }
         return type;
@@ -174,7 +179,7 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
                 ExpressionTree var1 = it1.next();
                 VariableElement var2 = it2.next();
                 String type1 = scan(var1, p);
-                String type2 = Raw.class.getName();
+                String type2 = Top.class.getName();
 
                 Type ann2 = var2.getAnnotation(Type.class);
                 TypeMirror value = null;
@@ -242,7 +247,11 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
         if (expr.equals(Raw.class.getName())) {
             var = Raw.class.getName();
         } else if (!isSubtype(expr, var, processingEnv)) {
-            printResultInfo(node, "'" + expr + "'", var, ResultKind.TYPE_MISMATCH_OPERAND, mTrees, cut);
+            printResultInfo(node,
+                    "'" + expr + "'",
+                    "'" + var + "'",
+                    ResultKind.TYPE_MISMATCH_OPERAND,
+                    mTrees, cut);
         }
         return var;
     }
@@ -328,36 +337,24 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
         return result;
     }
 
-    private void binaryOperatorCheck(ExpressionTree node, String l, String r) {
-        PermissionPolicy permissionForLeft = isOperationAllow(node.getKind(), l, processingEnv);
-        PermissionPolicy permissionForRight = isOperationAllow(node.getKind(), r, processingEnv);
-
-        switch (permissionForLeft) {
+    private void operatorApplyCheck(ExpressionTree node, String type) {
+        PermissionPolicy permission = isOperationAllow(node.getKind(), type, processingEnv);
+        switch (permission) {
             case FORBID:
-                printResultInfo(node, operatorKindToSymbol(node.getKind()),
-                        "'" + l + "'" + ", " + "'" + r + "'",
-                        ResultKind.WRONG_APPLY_OPERATOR, mTrees, cut);
+                printResultInfo(node,
+                        operatorKindToSymbol(node.getKind()),
+                        "'" + type + "'",
+                        ResultKind.WRONG_APPLY_OPERATOR,
+                        mTrees, cut);
                 break;
             case ALLOW_WITH_WARNING:
+                printResultInfo(node,
+                        operatorKindToSymbol(node.getKind()),
+                        "'" + type + "'",
+                        ResultKind.APPLY_OPERATOR_WITH_WARNING,
+                        mTrees, cut);
+                break;
             default:
-                switch (permissionForRight) {
-                    case FORBID:
-                        printResultInfo(node, operatorKindToSymbol(node.getKind()),
-                                "'" + l + "'" + ", " + "'" + r + "'",
-                                ResultKind.WRONG_APPLY_OPERATOR, mTrees, cut);
-                        break;
-                    case ALLOW_WITH_WARNING:
-                        printResultInfo(node, operatorKindToSymbol(node.getKind()),
-                                "'" + l + "'" + ", " + "'" + r + "'",
-                                ResultKind.APPLY_OPERATOR_WITH_WARNING, mTrees, cut);
-                        break;
-                    default:
-                        if (permissionForLeft == PermissionPolicy.ALLOW_WITH_WARNING) {
-                            printResultInfo(node, operatorKindToSymbol(node.getKind()),
-                                    "'" + l + "'" + ", " + "'" + r + "'",
-                                    ResultKind.APPLY_OPERATOR_WITH_WARNING, mTrees, cut);
-                        }
-                }
         }
     }
 
@@ -365,10 +362,16 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
     public String visitCompoundAssignment(CompoundAssignmentTree node, String aVoid) {
         String var = scan(node.getVariable(), aVoid);
         String expr = scan(node.getExpression(), aVoid);
-        if (!expr.equals(Raw.class.getName()) && !isSubtype(expr, var, processingEnv)) {
-            printResultInfo(node, "'" + expr + "'", "'" + var + "'", ResultKind.TYPE_MISMATCH_OPERAND, mTrees, cut);
-        } else {
-            binaryOperatorCheck(node, var, expr);
+        if (isSubtype(expr, var, processingEnv)) {
+            operatorApplyCheck(node, var);
+            return var;
+        }
+        if (!var.contentEquals(Raw.class.getName()) && !expr.contentEquals(Raw.class.getName())) {
+            printResultInfo(node,
+                    "'" + expr + "'",
+                    "'" + var + "'",
+                    ResultKind.TYPE_MISMATCH_OPERAND,
+                    mTrees, cut);
         }
         return var;
     }
@@ -376,16 +379,7 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
     @Override
     public String visitUnary(UnaryTree node, String aVoid) {
         String type = this.scan(node.getExpression(), aVoid);
-        PermissionPolicy permissionForExpr = isOperationAllow(node.getKind(), type, processingEnv);
-        switch (permissionForExpr) {
-            case FORBID:
-                printResultInfo(node, operatorKindToSymbol(node.getKind()), "'" + type + "'", ResultKind.WRONG_APPLY_OPERATOR, mTrees, cut);
-                break;
-            case ALLOW_WITH_WARNING:
-                printResultInfo(node, operatorKindToSymbol(node.getKind()), "'" + type + "'", ResultKind.APPLY_OPERATOR_WITH_WARNING, mTrees, cut);
-                break;
-            default:
-        }
+        operatorApplyCheck(node, type);
         return type;
     }
 
@@ -393,12 +387,25 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
     public String visitBinary(BinaryTree node, String aVoid) {
         String l = this.scan(node.getLeftOperand(), aVoid);
         String r = this.scan(node.getRightOperand(), aVoid);
-        if (!isSubtype(l, r, processingEnv) && !isSubtype(r, l, processingEnv)) {
-            printResultInfo(node, "'" + l + "'", "'" + r + "'", ResultKind.TYPE_MISMATCH_OPERAND, mTrees, cut);
-        } else {
-            binaryOperatorCheck(node, l, r);
+
+        if (isSubtype(l, r, processingEnv)) {
+            operatorApplyCheck(node, r);
+            return r;
         }
-        return generalizeTypes(l, r, processingEnv);
+        if (isSubtype(r, l, processingEnv)) {
+            operatorApplyCheck(node, l);
+            return l;
+        }
+
+        if (!l.contentEquals(Raw.class.getName()) && !r.contentEquals(Raw.class.getName())) {
+            printResultInfo(node,
+                    "'" + l + "'",
+                    "'" + r + "'",
+                    ResultKind.TYPE_MISMATCH_OPERAND,
+                    mTrees, cut);
+        }
+
+        return Top.class.getName();
     }
 
     @Override
