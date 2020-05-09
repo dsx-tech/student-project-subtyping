@@ -1,5 +1,9 @@
 package annvisitor.util;
 
+import ann.operation.arithmetic.*;
+import ann.operation.logical.*;
+import ann.operation.equal.*;
+import ann.operation.bitwise.*;
 import com.sun.source.tree.Tree;
 import org.junit.Test;
 
@@ -9,38 +13,38 @@ public class TypeOperatorPermissionCheckerTest {
 
     @Test
     public void treeKindToFieldName() {
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.PLUS), "PLUS");
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.MINUS), "MINUS");
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.DIVIDE), "DIVIDE");
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.MULTIPLY), "MULTIPLY");
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.PLUS), Plus.class);
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.MINUS), Minus.class);
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.DIVIDE), Divide.class);
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.MULTIPLY), Multiply.class);
 
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.AND), "AND");
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.OR), "OR");
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.XOR), "XOR");
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.AND), And.class);
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.OR), Or.class);
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.XOR), Xor.class);
 
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.CONDITIONAL_AND), "CONDITIONAL_AND");
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.CONDITIONAL_OR), "CONDITIONAL_OR");
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.CONDITIONAL_AND), ConditionalAnd.class);
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.CONDITIONAL_OR), ConditionalOr.class);
 
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.LEFT_SHIFT), "LEFT_SHIFT");
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.RIGHT_SHIFT), "RIGHT_SHIFT");
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.UNSIGNED_RIGHT_SHIFT), "UNSIGNED_RIGHT_SHIFT");
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.LEFT_SHIFT), LeftShift.class);
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.RIGHT_SHIFT), RightShift.class);
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.UNSIGNED_RIGHT_SHIFT), UnsignedRightShift.class);
 
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.UNARY_PLUS), "UNARY_PLUS");
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.UNARY_MINUS), "UNARY_MINUS");
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.UNARY_PLUS), UnaryPlus.class);
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.UNARY_MINUS), UnaryMinus.class);
 
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.EQUAL_TO), "EQUALS");
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.NOT_EQUAL_TO), "EQUALS");
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.GREATER_THAN), "EQUALS");
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.LESS_THAN), "EQUALS");
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.LESS_THAN_EQUAL), "EQUALS");
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.GREATER_THAN_EQUAL), "EQUALS");
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.EQUAL_TO), Equal.class);
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.NOT_EQUAL_TO), Equal.class);
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.GREATER_THAN), Equal.class);
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.LESS_THAN), Equal.class);
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.LESS_THAN_EQUAL), Equal.class);
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.GREATER_THAN_EQUAL), Equal.class);
 
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.LOGICAL_COMPLEMENT), "LOGICAL_COMPLEMENT");
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.BITWISE_COMPLEMENT), "BITWISE_COMPLEMENT");
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.LOGICAL_COMPLEMENT), LogicalComplement.class);
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.BITWISE_COMPLEMENT), BitwiseComplement.class);
 
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.POSTFIX_DECREMENT), "DECREMENT");
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.PREFIX_DECREMENT), "DECREMENT");
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.POSTFIX_INCREMENT), "INCREMENT");
-        assertEquals(TypeOperatorPermissionChecker.treeKindToFieldName(Tree.Kind.PREFIX_INCREMENT), "INCREMENT");
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.POSTFIX_DECREMENT), Decrement.class);
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.PREFIX_DECREMENT), Decrement.class);
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.POSTFIX_INCREMENT), Increment.class);
+        assertEquals(TypeOperatorPermissionChecker.treeKindToAnnotation(Tree.Kind.PREFIX_INCREMENT), Increment.class);
     }
 }

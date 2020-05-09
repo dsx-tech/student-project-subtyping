@@ -1,121 +1,95 @@
 package annvisitor.util;
 
-import ann.type.UnknownType;
-import com.sun.source.tree.CompilationUnitTree;
-import com.sun.source.tree.ExpressionTree;
+import ann.operation.arithmetic.*;
+import ann.operation.logical.*;
+import ann.operation.bitwise.*;
+import ann.operation.equal.Equal;
 import com.sun.source.tree.Tree;
-import com.sun.source.tree.VariableTree;
-import com.sun.source.util.Trees;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
-import javax.lang.model.util.ElementFilter;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.lang.annotation.Annotation;
 
-import static annvisitor.util.AnnotationValueSubtypes.findPath;
-import static annvisitor.util.Messager.printResultInfo;
 
 public class TypeOperatorPermissionChecker {
     private TypeOperatorPermissionChecker() {
 
     }
 
-    public static String treeKindToFieldName(Tree.Kind op) {
+    public static Class<? extends Annotation> treeKindToAnnotation(Tree.Kind op) {
         switch (op) {
             case POSTFIX_DECREMENT:
             case PREFIX_DECREMENT:
-                return "DECREMENT";
+                return Decrement.class;
             case POSTFIX_INCREMENT:
             case PREFIX_INCREMENT:
-                return "INCREMENT";
+                return Increment.class;
             case EQUAL_TO:
             case NOT_EQUAL_TO:
             case GREATER_THAN_EQUAL:
             case LESS_THAN_EQUAL:
             case LESS_THAN:
             case GREATER_THAN:
-                return "EQUALS";
+                return Equal.class;
+            case PLUS:
             case PLUS_ASSIGNMENT:
-                return Tree.Kind.PLUS.toString();
+                return Plus.class;
+            case MINUS:
             case MINUS_ASSIGNMENT:
-                return Tree.Kind.MINUS.toString();
+                return Minus.class;
+            case MULTIPLY:
             case MULTIPLY_ASSIGNMENT:
-                return Tree.Kind.MULTIPLY.toString();
+                return Multiply.class;
+            case DIVIDE:
             case DIVIDE_ASSIGNMENT:
-                return Tree.Kind.DIVIDE.toString();
+                return Divide.class;
+            case REMAINDER:
             case REMAINDER_ASSIGNMENT:
-                return Tree.Kind.REMAINDER.toString();
+                return Remainder.class;
+            case AND:
             case AND_ASSIGNMENT:
-                return Tree.Kind.AND.toString();
+                return And.class;
+            case OR:
             case OR_ASSIGNMENT:
-                return Tree.Kind.OR.toString();
+                return Or.class;
+            case XOR:
             case XOR_ASSIGNMENT:
-                return Tree.Kind.XOR.toString();
+                return Xor.class;
+            case CONDITIONAL_AND:
+                return ConditionalAnd.class;
+            case CONDITIONAL_OR:
+                return ConditionalOr.class;
+            case LOGICAL_COMPLEMENT:
+                return LogicalComplement.class;
+            case LEFT_SHIFT:
             case LEFT_SHIFT_ASSIGNMENT:
-                return Tree.Kind.LEFT_SHIFT.toString();
+                return LeftShift.class;
+            case RIGHT_SHIFT:
             case RIGHT_SHIFT_ASSIGNMENT:
-                return Tree.Kind.RIGHT_SHIFT.toString();
+                return RightShift.class;
+            case UNSIGNED_RIGHT_SHIFT:
             case UNSIGNED_RIGHT_SHIFT_ASSIGNMENT:
-                return Tree.Kind.UNSIGNED_RIGHT_SHIFT.toString();
+                return UnsignedRightShift.class;
+            case BITWISE_COMPLEMENT:
+                return BitwiseComplement.class;
+            case UNARY_PLUS:
+                return UnaryPlus.class;
+            case UNARY_MINUS:
+                return UnaryMinus.class;
             default:
-                return op.toString();
+                return null;
         }
     }
 
     public static PermissionStatus getPermissionStatus(Tree.Kind operator,
                                                        String type,
                                                        ProcessingEnvironment processingEnv) {
-        LinkedList<String> path = new LinkedList<>();
+        TypeElement clazz = processingEnv.getElementUtils().getTypeElement(type);
+        Annotation ann = clazz.getAnnotation(treeKindToAnnotation(operator));
         PermissionStatus status = PermissionStatus.FORBID;
 
-        if (findPath(type, UnknownType.class.getName(), path, processingEnv)) {
-
-            String fieldName = treeKindToFieldName(operator);
-            Trees tree = Trees.instance(processingEnv);
-
-            for (String type1 : path) {
-                if (!type1.contentEquals(UnknownType.class.getName())) {
-                    TypeElement clazz = processingEnv.getElementUtils().getTypeElement(type1);
-                    List<VariableElement> fields = ElementFilter
-                            .fieldsIn(clazz.getEnclosedElements())
-                            .stream()
-                            .filter(ve -> ve.getSimpleName().contentEquals(fieldName))
-                            .collect(Collectors.toList());
-
-                    VariableTree field = fields.isEmpty() ? null : (VariableTree) tree.getTree(fields.get(0));
-
-                    if (field != null) {
-                        CompilationUnitTree cut = tree.getPath(fields.get(0)).getCompilationUnit();
-                        ExpressionTree init = field.getInitializer();
-                        if (init != null && init.getKind() == Tree.Kind.MEMBER_SELECT) {
-                            String value = init.toString();
-                            switch (value) {
-                                case "annvisitor.util.PermissionPolicy.ALLOW":
-                                case "PermissionPolicy.ALLOW":
-                                    status = PermissionStatus.ALLOW;
-                                    break;
-                                case "annvisitor.util.PermissionPolicy.ALLOW_WITH_WARNING":
-                                case "PermissionPolicy.ALLOW_WITH_WARNING":
-                                    status = PermissionStatus.ALLOW_WITH_WARNING;
-                                    break;
-                                default:
-                                    printResultInfo(field, "", "",
-                                            ResultKind.WRONG_PERMISSION_VALUE,
-                                            tree, cut);
-                            }
-                        } else {
-                            printResultInfo(field, "", "",
-                                    ResultKind.WRONG_PERMISSION_VALUE,
-                                    tree, cut);
-                        }
-
-                        break;
-                    }
-                }
-            }
+        if (ann != null) {
+            status = PermissionStatus.ALLOW;
         }
 
         return status;

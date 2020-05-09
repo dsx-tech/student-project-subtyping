@@ -3,7 +3,7 @@ import ann.Type;
 import ann.UnsafeCast;
 
 public class Test {
-    @Type(Euro.class)
+    @Type(SubEuro.class)
     private static long var3 = 1000;
     @Type(Dollar.class)
     private static int var5 = 50;

@@ -358,13 +358,7 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
                         ResultKind.WRONG_APPLY_OPERATOR,
                         mTrees, cut);
                 break;
-            case ALLOW_WITH_WARNING:
-                printResultInfo(node,
-                        operatorKindToSymbol(node.getKind()),
-                        "'" + type + "'",
-                        ResultKind.APPLY_OPERATOR_WITH_WARNING,
-                        mTrees, cut);
-                break;
+            case ALLOW:
             default:
         }
     }

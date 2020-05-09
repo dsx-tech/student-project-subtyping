@@ -1,8 +1,9 @@
 package examples;
 
-import annvisitor.util.PermissionPolicy;
+import ann.operation.arithmetic.Minus;
+import ann.operation.arithmetic.Plus;
 
+@Plus
+@Minus
 public class Euro {
-    public static final PermissionPolicy PLUS = PermissionPolicy.ALLOW;
-    public static final PermissionPolicy MINUS = PermissionPolicy.ALLOW;
 }

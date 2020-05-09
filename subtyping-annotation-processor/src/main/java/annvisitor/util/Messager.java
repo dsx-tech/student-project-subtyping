@@ -48,11 +48,6 @@ public class Messager {
                         node,
                         cut);
                 break;
-            case WRONG_PERMISSION_VALUE:
-                tree.printMessage(Diagnostic.Kind.ERROR,
-                        "incorrect value of permission variable",
-                        node,
-                        cut);
             case INCORRECT_RETURN_TYPE:
                 errorMessage
                         .append("incompatible types: cannot return ")
@@ -76,17 +71,6 @@ public class Messager {
                         .append("annotated argument ")
                         .append(name1)
                         .append(" used as non annotated");
-                tree.printMessage(Diagnostic.Kind.WARNING,
-                        errorMessage.toString(),
-                        node,
-                        cut);
-                break;
-            case APPLY_OPERATOR_WITH_WARNING:
-                errorMessage
-                        .append("apply operator ")
-                        .append(name1)
-                        .append(" to ")
-                        .append(name2);
                 tree.printMessage(Diagnostic.Kind.WARNING,
                         errorMessage.toString(),
                         node,
