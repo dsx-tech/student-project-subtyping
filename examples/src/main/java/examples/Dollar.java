@@ -1,6 +1,6 @@
 package examples;
 
-import ann.operation.arithmetic.Plus;
+import annotation.operation.arithmetic.Plus;
 
 @Plus
 public class Dollar {

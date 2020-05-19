@@ -1,7 +1,7 @@
 package examples;
 
-import ann.operation.arithmetic.Minus;
-import ann.operation.arithmetic.Plus;
+import annotation.operation.arithmetic.Minus;
+import annotation.operation.arithmetic.Plus;
 
 @Plus
 @Minus

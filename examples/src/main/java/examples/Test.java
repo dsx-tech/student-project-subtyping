@@ -1,6 +1,6 @@
 package examples;
-import ann.Type;
-import ann.UnsafeCast;
+import annotation.Type;
+import annotation.UnsafeCast;
 
 public class Test {
     @Type(SubEuro.class)
