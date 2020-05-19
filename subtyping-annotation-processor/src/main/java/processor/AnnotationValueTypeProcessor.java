@@ -1,7 +1,7 @@
-package annproc;
+package processor;
 
-import ann.Type;
-import annvisitor.ExecutableVisitor;
+import annotation.Type;
+import scanner.AnnotationValueTypeElementScanner;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -15,11 +15,12 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 public class AnnotationValueTypeProcessor extends AbstractProcessor {
-    private ExecutableVisitor executableVisitor;
+    private AnnotationValueTypeElementScanner annotationValueTypeElementScanner;
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
+        this.annotationValueTypeElementScanner = new AnnotationValueTypeElementScanner(processingEnv);
     }
 
     @Override
@@ -28,16 +29,15 @@ public class AnnotationValueTypeProcessor extends AbstractProcessor {
             return false;
         }
 
-        //Set<? extends Element> annotatedDeclarations = roundEnvironment.getElementsAnnotatedWith(Subtype.class);
-
-        executableVisitor = new ExecutableVisitor(processingEnv);
-        // obtain the root classes of a current round environment
         Set<? extends Element> classes = ElementFilter.typesIn(roundEnvironment.getRootElements());
         for (Element clazz : classes) {
             clazz.getEnclosedElements()
                     .stream()
-                    .filter(e -> e.getKind() == ElementKind.CONSTRUCTOR || e.getKind() == ElementKind.METHOD)
-                    .forEach(e -> e.accept(executableVisitor, null));
+                    .filter(e ->
+                            e.getKind() == ElementKind.CONSTRUCTOR ||
+                            e.getKind() == ElementKind.METHOD ||
+                            e.getKind() == ElementKind.FIELD)
+                    .forEach(e -> e.accept(annotationValueTypeElementScanner, null));
         }
 
         return true;

@@ -1,5 +1,5 @@
 package examples;
-import ann.Type;
+import annotation.Type;
 
 public class BankAccount {
     @Type(Euro.class)

@@ -1,4 +1,4 @@
-package annvisitor.util;
+package scanner.util;
 
 import org.junit.After;
 import org.junit.Before;
@@ -49,17 +49,17 @@ public class AnnotationValueSubtypesTest {
 
     @Test
     public void findMostCommonType() {
-        assertEquals(AnnotationValueSubtypes.findMostCommonType(path1, path2), "Id");
-        assertEquals(AnnotationValueSubtypes.findMostCommonType(path1, path3), "CarId");
-        assertEquals(AnnotationValueSubtypes.findMostCommonType(path1, path4), "Numbers");
-        assertEquals(AnnotationValueSubtypes.findMostCommonType(path2, path1), "Id");
-        assertEquals(AnnotationValueSubtypes.findMostCommonType(path2, path3), "Id");
-        assertEquals(AnnotationValueSubtypes.findMostCommonType(path2, path4), "Numbers");
-        assertEquals(AnnotationValueSubtypes.findMostCommonType(path3, path1), "CarId");
-        assertEquals(AnnotationValueSubtypes.findMostCommonType(path3, path2), "Id");
-        assertEquals(AnnotationValueSubtypes.findMostCommonType(path3, path4), "Numbers");
-        assertEquals(AnnotationValueSubtypes.findMostCommonType(path4, path1), "Numbers");
-        assertEquals(AnnotationValueSubtypes.findMostCommonType(path4, path2), "Numbers");
-        assertEquals(AnnotationValueSubtypes.findMostCommonType(path4, path3), "Numbers");
+        assertEquals(SubtypingChecker.findMostCommonType(path1, path2), "Id");
+        assertEquals(SubtypingChecker.findMostCommonType(path1, path3), "CarId");
+        assertEquals(SubtypingChecker.findMostCommonType(path1, path4), "Numbers");
+        assertEquals(SubtypingChecker.findMostCommonType(path2, path1), "Id");
+        assertEquals(SubtypingChecker.findMostCommonType(path2, path3), "Id");
+        assertEquals(SubtypingChecker.findMostCommonType(path2, path4), "Numbers");
+        assertEquals(SubtypingChecker.findMostCommonType(path3, path1), "CarId");
+        assertEquals(SubtypingChecker.findMostCommonType(path3, path2), "Id");
+        assertEquals(SubtypingChecker.findMostCommonType(path3, path4), "Numbers");
+        assertEquals(SubtypingChecker.findMostCommonType(path4, path1), "Numbers");
+        assertEquals(SubtypingChecker.findMostCommonType(path4, path2), "Numbers");
+        assertEquals(SubtypingChecker.findMostCommonType(path4, path3), "Numbers");
     }
 }

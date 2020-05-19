@@ -1,9 +1,10 @@
 package examples;
-import ann.Type;
+import annotation.Type;
+import annotation.UnsafeCast;
 
 public class Test {
-    @Type(Euro.class)
-    private static long var3 = 100;
+    @Type(SubEuro.class)
+    private static long var3 = 1000;
     @Type(Dollar.class)
     private static int var5 = 50;
 
@@ -12,8 +13,9 @@ public class Test {
     }
 
     private static void testMethod1() {
+        @UnsafeCast
         @Type(SubEuro.class)
-        int var1 = 1000;
+        int var1 = var5;
 
         @Type(Dollar.class)
         int var2 = 200;
