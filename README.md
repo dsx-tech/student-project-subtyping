@@ -120,3 +120,19 @@ class BankAccount {
     }
 }
 ```
+Sometimes you may want to initialize a variable or field with an incompatible type. 
+For example, when converting a currency. In this case, you can use an `@UnsafeCast` annotation. If you want to avoid a warning, you should use a corresponding argument. The example below demonstrate how you can do it.
+```java
+class BankAccount { 
+    @Type(Dollar.class)
+    private int val1 = 100;
+
+    @UnsafeCast(printWarning = false)
+    @Type(Euro.class)
+    private int val2 = val1 * 0.92;
+
+    void evaluateSum() {
+        //... 
+    }
+}
+```
