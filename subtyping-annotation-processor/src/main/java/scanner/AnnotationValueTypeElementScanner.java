@@ -1,5 +1,6 @@
 package scanner;
 
+import annotation.MetaType;
 import annotation.Type;
 import annotation.UnsafeCast;
 import scanner.type.RawType;
@@ -11,18 +12,20 @@ import com.sun.source.tree.VariableTree;
 import com.sun.source.util.Trees;
 
 import javax.annotation.processing.ProcessingEnvironment;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.VariableElement;
+import javax.lang.model.element.*;
 import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.util.ElementScanner7;
+import javax.tools.Diagnostic;
 
 public class AnnotationValueTypeElementScanner extends ElementScanner7<Void, Void> {
-    private final Trees mTrees;
-    private final AnnotationValueTypeTreeScanner annValTypeTreeScanner;
-    private final Messager messager;
-    private final SubtypingChecker subtypingChecker;
+    protected final ProcessingEnvironment processingEnv;
+    protected final Trees mTrees;
+    protected final AnnotationValueTypeTreeScanner annValTypeTreeScanner;
+    protected final Messager messager;
+    protected final SubtypingChecker subtypingChecker;
 
     public AnnotationValueTypeElementScanner(ProcessingEnvironment processingEnv) {
+        this.processingEnv = processingEnv;
         this.mTrees = Trees.instance(processingEnv);
         this.messager = new ErrorsWithTypesNamesMessager(mTrees);
         this.subtypingChecker = new SingleInheritanceSubtypingChecker(processingEnv);
@@ -56,6 +59,25 @@ public class AnnotationValueTypeElementScanner extends ElementScanner7<Void, Voi
                 } catch (MirroredTypeException mte) {
                     if (mte.getTypeMirror() != null) {
                         declType = mte.getTypeMirror().toString();
+
+                        Element clazz = processingEnv.getElementUtils().getTypeElement(declType);
+
+                        if (clazz.getAnnotation(MetaType.class) == null) {
+                            AnnotationMirror annMirror = null;
+
+                            for (AnnotationMirror mirror : e.getAnnotationMirrors()) {
+                                if (mirror.getAnnotationType().toString().contentEquals(Type.class.getName())) {
+                                    annMirror = mirror;
+                                }
+                            }
+
+                            if (annMirror != null) {
+                                AnnotationValue annValue = annMirror.getElementValues().entrySet().iterator().next().getValue();
+                                processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
+                                        "usage '" + declType + "' class as argument of @Type; declare @MetaType on '" + declType + "' class",
+                                        e, annMirror, annValue);
+                            }
+                        }
                     }
                 }
 

@@ -15,7 +15,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 public class AnnotationValueTypeProcessor extends AbstractProcessor {
-    private AnnotationValueTypeElementScanner annotationValueTypeElementScanner;
+    protected AnnotationValueTypeElementScanner annotationValueTypeElementScanner;
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {

@@ -1,5 +1,6 @@
 package scanner;
 
+import annotation.MetaType;
 import annotation.Type;
 import annotation.UnsafeCast;
 import scanner.type.*;
@@ -10,27 +11,28 @@ import com.sun.source.util.TreeScanner;
 import com.sun.source.util.Trees;
 
 import javax.annotation.processing.ProcessingEnvironment;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.VariableElement;
+import javax.lang.model.element.*;
 import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.tools.Diagnostic;
 import java.util.*;
 
 // first String for inferred type, second String for type checks of return expression
 public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> {
-    private final Trees mTrees;
-    private CompilationUnitTree cut;
-    private final Messager messager;
-    private final OperationPermissionChecker opPermChecker;
-    private final SubtypingChecker subtypingChecker;
-    private Map<Element, String> localVarsTypes;
+    protected final ProcessingEnvironment processingEnv;
+    protected final Trees mTrees;
+    protected CompilationUnitTree cut;
+    protected final Messager messager;
+    protected final OperationPermissionChecker opPermChecker;
+    protected final SubtypingChecker subtypingChecker;
+    protected Map<Element, String> localVarsTypes;
 
     public AnnotationValueTypeTreeScanner(ProcessingEnvironment processingEnv,
                                           Messager messager,
                                           SubtypingChecker subtypingChecker,
                                           OperationPermissionChecker permissionChecker) {
+        this.processingEnv = processingEnv;
         this.mTrees = Trees.instance(processingEnv);
         this.opPermChecker = permissionChecker;
         this.subtypingChecker = subtypingChecker;
@@ -43,11 +45,31 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
         this.messager.init(cut);
     }
 
+    protected void checkMetaTypeAnnotationOnValueType(TypeMirror type, Element element) {
+        Element clazz = processingEnv.getElementUtils().getTypeElement(type.toString());
+        if (clazz.getAnnotation(MetaType.class) == null) {
+            AnnotationMirror annMirror = null;
+
+            for (AnnotationMirror ann : element.getAnnotationMirrors()) {
+                if (ann.getAnnotationType().toString().contentEquals(Type.class.getName())) {
+                    annMirror = ann;
+                }
+            }
+
+            if (annMirror != null) {
+                AnnotationValue annValue = annMirror.getElementValues().entrySet().iterator().next().getValue();
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
+                        "usage '" + type.toString() + "' class as argument of @Type; declare @MetaType on '" + type.toString() + "' class",
+                        element, annMirror, annValue);
+            }
+        }
+    }
+
     @Override
-    public String visitMethod(MethodTree node, String aVoid) {
+    public String visitMethod(MethodTree node, String s) {
         // node is a constructor
         if (node.getReturnType() == null) {
-            scan(node.getBody(), aVoid);
+            scan(node.getBody(), s);
             return RawType.class.getName();
         }
 
@@ -58,7 +80,7 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
         if (ann != null) {
             if (method.getReturnType().getKind() == TypeKind.VOID) {
                 messager.printErrorAndWarning(node, "", "", ErrorAndWarningKind.ANNOTATION_ON_VOID);
-                scan(node.getBody(), aVoid);
+                scan(node.getBody(), s);
                 return null;
             }
 
@@ -69,10 +91,11 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
             }
 
             if (value != null) {
+                checkMetaTypeAnnotationOnValueType(value, method);
                 // all return expressions of body block must be subtype of value
                 scan(node.getBody(), value.toString());
                 if (node.getDefaultValue() != null) {
-                    String type = scan(node.getDefaultValue(), aVoid);
+                    String type = scan(node.getDefaultValue(), s);
                     if (!subtypingChecker.isSubtype(type, value.toString())) {
                         messager.printErrorAndWarning(node,
                                 "'" + type + "'",
@@ -84,17 +107,17 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
             }
         }
 
-        scan(node.getBody(), aVoid);
-        scan(node.getDefaultValue(), aVoid);
+        scan(node.getBody(), s);
+        scan(node.getDefaultValue(), s);
 
         return method.getReturnType().getKind() == TypeKind.VOID ? null : RawType.class.getName();
     }
 
     @Override
-    public String visitVariable(VariableTree node, String aVoid) {
+    public String visitVariable(VariableTree node, String s) {
         String actualType = RawType.class.getName();
         if (node.getInitializer() != null) {
-            actualType = scan(node.getInitializer(), aVoid);
+            actualType = scan(node.getInitializer(), s);
         }
 
         Element var = mTrees.getElement(mTrees.getPath(cut, node));
@@ -108,6 +131,7 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
                 if (mte.getTypeMirror() != null) {
                     declType = mte.getTypeMirror().toString();
                     localVarsTypes.put(var, declType);
+                    checkMetaTypeAnnotationOnValueType(mte.getTypeMirror(), var);
                 }
             }
         } else {
@@ -145,10 +169,10 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
     }
 
     @Override
-    public String visitConditionalExpression(ConditionalExpressionTree node, String aVoid) {
-        scan(node.getCondition(), aVoid);
-        String l = scan(node.getTrueExpression(), aVoid);
-        String r = scan(node.getFalseExpression(), aVoid);
+    public String visitConditionalExpression(ConditionalExpressionTree node, String s) {
+        scan(node.getCondition(), s);
+        String l = scan(node.getTrueExpression(), s);
+        String r = scan(node.getFalseExpression(), s);
         return subtypingChecker.generalizeTypes(l, r);
     }
 
@@ -166,7 +190,7 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
         return type;
     }
 
-    private void checkParamsMatching(List<? extends ExpressionTree> actParams,
+    protected void checkParamsMatching(List<? extends ExpressionTree> actParams,
                                      List<? extends VariableElement> formParams,
                                      String p) {
         if (actParams != null && formParams != null && actParams.size() == formParams.size()) {
@@ -187,6 +211,7 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
                     } catch (MirroredTypeException mte) {
                         if (mte.getTypeMirror() != null) {
                             declType = mte.getTypeMirror().toString();
+                            checkMetaTypeAnnotationOnValueType(mte.getTypeMirror(), var2);
                         }
                     }
                 }
@@ -213,9 +238,9 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
     }
 
     @Override
-    public String visitMethodInvocation(MethodInvocationTree node, String aVoid) {
+    public String visitMethodInvocation(MethodInvocationTree node, String s) {
         ExecutableElement method = (ExecutableElement) mTrees.getElement(mTrees.getPath(cut, node));
-        checkParamsMatching(node.getArguments(), method.getParameters(), aVoid);
+        checkParamsMatching(node.getArguments(), method.getParameters(), s);
 
         String type = RawType.class.getName();
         Type ann = method.getAnnotation(Type.class);
@@ -234,13 +259,43 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
     }
 
     @Override
-    public String visitNewClass(NewClassTree node, String aVoid) {
+    public String visitNewClass(NewClassTree node, String s) {
         ExecutableElement constructor = (ExecutableElement) mTrees.getElement(mTrees.getPath(cut, node));
-        checkParamsMatching(node.getArguments(), constructor.getParameters(), aVoid);
+        checkParamsMatching(node.getArguments(), constructor.getParameters(), s);
         return RawType.class.getName();
     }
 
-    private void assignmentExpressionCheck(ExpressionTree node, String variable, String expression) {
+    @Override
+    public String visitNewArray(NewArrayTree node, String aVoid) {
+        return RawType.class.getName();
+    }
+
+    protected String visitIdentifierOrArrayAccess(Tree node, String aVoid) {
+        Element var = mTrees.getElement(mTrees.getPath(cut, node));
+        Type ann = var.getAnnotation(Type.class);
+        String type = RawType.class.getName();
+
+        if (ann != null) {
+            try {
+                ann.value();
+            } catch (MirroredTypeException mte) {
+                if (mte.getTypeMirror() != null) {
+                    type = mte.getTypeMirror().toString();
+                }
+            }
+        } else if (localVarsTypes.containsKey(var)) {
+            type = localVarsTypes.get(var);
+        }
+
+        return type;
+    }
+
+    @Override
+    public String visitArrayAccess(ArrayAccessTree node, String s) {
+        return visitIdentifierOrArrayAccess(node.getExpression(), s);
+    }
+
+    protected void assignmentExpressionCheck(ExpressionTree node, String variable, String expression) {
         if (!variable.contentEquals(RawType.class.getName()) &&
                 !variable.contentEquals(UnknownType.class.getName()) &&
                 !expression.contentEquals(RawType.class.getName()) &&
@@ -260,14 +315,14 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
     }
 
     @Override
-    public String visitAssignment(AssignmentTree node, String aVoid) {
-        String var = scan(node.getVariable(), aVoid);
-        String expr = scan(node.getExpression(), aVoid);
+    public String visitAssignment(AssignmentTree node, String s) {
+        String var = scan(node.getVariable(), s);
+        String expr = scan(node.getExpression(), s);
         assignmentExpressionCheck(node, var, expr);
         return var;
     }
 
-    private String operatorKindToSymbol(Tree.Kind operator) {
+    protected String operatorKindToSymbol(Tree.Kind operator) {
         String result = "";
         switch (operator) {
             case PLUS:
@@ -359,7 +414,7 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
         return result;
     }
 
-    private void operatorApplyCheck(ExpressionTree node, String type) {
+    protected void operatorApplyCheck(ExpressionTree node, String type) {
         boolean isAllow = opPermChecker.isOperationAllow(node.getKind(), type);
         if (!isAllow) {
             messager.printErrorAndWarning(node, operatorKindToSymbol(node.getKind()),
@@ -369,9 +424,9 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
     }
 
     @Override
-    public String visitCompoundAssignment(CompoundAssignmentTree node, String aVoid) {
-        String var = scan(node.getVariable(), aVoid);
-        String expr = scan(node.getExpression(), aVoid);
+    public String visitCompoundAssignment(CompoundAssignmentTree node, String s) {
+        String var = scan(node.getVariable(), s);
+        String expr = scan(node.getExpression(), s);
 
         assignmentExpressionCheck(node, var, expr);
 
@@ -383,16 +438,16 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
     }
 
     @Override
-    public String visitUnary(UnaryTree node, String aVoid) {
-        String type = this.scan(node.getExpression(), aVoid);
+    public String visitUnary(UnaryTree node, String s) {
+        String type = this.scan(node.getExpression(), s);
         operatorApplyCheck(node, type);
         return type;
     }
 
     @Override
-    public String visitBinary(BinaryTree node, String aVoid) {
-        String l = this.scan(node.getLeftOperand(), aVoid);
-        String r = this.scan(node.getRightOperand(), aVoid);
+    public String visitBinary(BinaryTree node, String s) {
+        String l = this.scan(node.getLeftOperand(), s);
+        String r = this.scan(node.getRightOperand(), s);
 
         if (subtypingChecker.isSubtype(l, r)) {
             operatorApplyCheck(node, r);
@@ -433,24 +488,8 @@ public class AnnotationValueTypeTreeScanner extends TreeScanner<String, String> 
     }
 
     @Override
-    public String visitIdentifier(IdentifierTree node, String aVoid) {
-        Element var = mTrees.getElement(mTrees.getPath(cut, node));
-        Type ann = var.getAnnotation(Type.class);
-        String type = RawType.class.getName();
-
-        if (ann != null) {
-            try {
-                ann.value();
-            } catch (MirroredTypeException mte) {
-                if (mte.getTypeMirror() != null) {
-                    type = mte.getTypeMirror().toString();
-                }
-            }
-        } else if (localVarsTypes.containsKey(var)) {
-            type = localVarsTypes.get(var);
-        }
-
-        return type;
+    public String visitIdentifier(IdentifierTree node, String s) {
+        return visitIdentifierOrArrayAccess(node, s);
     }
 
     @Override

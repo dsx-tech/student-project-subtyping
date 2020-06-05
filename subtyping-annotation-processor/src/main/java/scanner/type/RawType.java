@@ -1,5 +1,6 @@
 package scanner.type;
 
+import annotation.MetaType;
 import annotation.operation.arithmetic.*;
 import annotation.operation.bitwise.BitwiseComplement;
 import annotation.operation.bitwise.LeftShift;
@@ -28,5 +29,6 @@ import annotation.operation.logical.*;
 @ConditionalAnd
 @ConditionalOr
 @LogicalComplement
+@MetaType
 public class RawType {
 }
